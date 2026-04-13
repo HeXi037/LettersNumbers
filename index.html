@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Countdown Party Game</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Countdown Party Game</h1>
+  </header>
+
+  <main>
+    <section class="scoreboard panel" aria-label="Scoreboard">
+      <h2>Scoreboard</h2>
+      <div class="teams">
+        <div class="team-card">
+          <label for="teamAName">Team A</label>
+          <input id="teamAName" type="text" maxlength="32" />
+          <div class="score" id="teamAScore">0</div>
+        </div>
+        <div class="team-card">
+          <label for="teamBName">Team B</label>
+          <input id="teamBName" type="text" maxlength="32" />
+          <div class="score" id="teamBScore">0</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="controller panel" aria-label="Round controls">
+      <h2>Round Controller</h2>
+      <div class="button-grid">
+        <button id="newLettersBtn">New Letters Round</button>
+        <button id="newNumbersBtn">New Numbers Round</button>
+        <button id="newConundrumBtn">New Conundrum</button>
+        <button id="revealBtn">Reveal / End Round</button>
+        <button id="nextRoundBtn">Next Round</button>
+        <button id="resetMatchBtn" class="danger">Reset Match</button>
+      </div>
+    </section>
+
+    <section class="settings panel" aria-label="Settings">
+      <h2>Settings</h2>
+      <div class="settings-grid">
+        <label>
+          Timer (seconds)
+          <input id="timerDuration" type="number" min="5" max="180" step="1" value="30" />
+        </label>
+        <label>
+          Vowel weight override (comma-separated, A,E,I,O,U)
+          <input id="vowelWeights" type="text" placeholder="15,21,13,13,5" />
+        </label>
+        <label>
+          Consonant weight override (comma-separated, B..Z except vowels)
+          <input id="consonantWeights" type="text" placeholder="2,3,6,2,2,..." />
+        </label>
+        <label>
+          Large numbers next round (0-4)
+          <input id="largeCount" type="number" min="0" max="4" value="2" />
+        </label>
+      </div>
+      <button id="saveSettingsBtn">Save Settings</button>
+      <p class="help-text">Leave weight fields blank to use default English-like frequencies.</p>
+    </section>
+
+    <section class="timer panel" aria-label="Timer">
+      <h2>Timer</h2>
+      <div id="timerDisplay" class="timer-display" aria-live="polite">30</div>
+      <div class="button-row">
+        <button id="timerStartBtn">Start</button>
+        <button id="timerPauseBtn">Pause</button>
+        <button id="timerResetBtn">Reset</button>
+      </div>
+      <div id="timerAnnouncements" class="sr-only" aria-live="assertive"></div>
+    </section>
+
+    <section class="round-view panel" aria-label="Current round">
+      <h2 id="roundTitle">No active round</h2>
+      <div id="roundPrompt" class="round-prompt">Start a round to begin.</div>
+      <div id="teamEntries" class="team-entries"></div>
+      <div id="roundErrors" class="error-text" aria-live="polite"></div>
+      <div id="revealPanel" class="reveal-panel"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
