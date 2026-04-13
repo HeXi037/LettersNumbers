@@ -753,6 +753,9 @@ async function init() {
 }
 
 function normalizeState() {
+  if (window.StateNormalization) {
+    window.StateNormalization.normalizePersistedState(state, DEFAULT_SETTINGS);
+  }
   if (!state.settings) state.settings = { ...DEFAULT_SETTINGS };
   state.settings.timerDuration = clampNumber(state.settings.timerDuration, 5, 180, 30);
   state.settings.largeCount = clampNumber(state.settings.largeCount, 0, 4, 2);
@@ -1120,6 +1123,17 @@ function renderConundrumInputs() {
 function submitTeamAnswer(team, type) {
   showError('');
   if (!state.round || state.round.revealed) return;
+  const canSubmitConundrum = window.ConundrumGuards?.canSubmitConundrum;
+  const rejectedMeta = window.ConundrumGuards?.CONUNDRUM_SUBMISSION_REJECTED || 'Submission rejected: team must buzz in before answering.';
+  if (type === 'conundrum' && !(canSubmitConundrum ? canSubmitConundrum(state.round, team) : state.round.buzz.activeTeam === team)) {
+    state.round.submissions[team].submitted = true;
+    state.round.submissions[team].valid = false;
+    state.round.submissions[team].meta = rejectedMeta;
+    showError(`Only ${state.teams[state.round.buzz.activeTeam]?.name || 'the active team'} may submit right now.`);
+    saveState();
+    renderRound();
+    return;
+  }
   if (type === 'letters') evaluateLettersSubmission(team);
   if (type === 'numbers') evaluateNumbersSubmission(team);
   if (type === 'conundrum') evaluateConundrumSubmission(team);
@@ -1190,6 +1204,15 @@ function evaluateNumbersSubmission(team) {
 
 function evaluateConundrumSubmission(team) {
   if (state.round.solved) return;
+  const canSubmitConundrum = window.ConundrumGuards?.canSubmitConundrum;
+  const rejectedMeta = window.ConundrumGuards?.CONUNDRUM_SUBMISSION_REJECTED || 'Submission rejected: team must buzz in before answering.';
+  if (!(canSubmitConundrum ? canSubmitConundrum(state.round, team) : state.round.buzz.activeTeam === team)) {
+    const sub = state.round.submissions[team];
+    sub.submitted = true;
+    sub.valid = false;
+    sub.meta = rejectedMeta;
+    return;
+  }
   const sub = state.round.submissions[team];
   const val = sub.value.trim().toLowerCase();
   sub.submitted = true;
@@ -1209,6 +1232,8 @@ function evaluateConundrumSubmission(team) {
 
 function buzz(team) {
   if (!state.round || state.round.type !== 'conundrum' || state.round.solved) return;
+  if (state.round.buzz.activeTeam && state.round.buzz.activeTeam !== team) return;
+  if (Date.now() < (state.round.buzz.lockedUntil || 0) && state.round.buzz.activeTeam !== team) return;
   state.round.buzz.activeTeam = team;
   state.round.buzz.lockedUntil = Date.now() + 3000;
   saveState();
