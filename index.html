@@ -30,6 +30,7 @@
 
     <section class="controller panel" aria-label="Round controls">
       <h2>Round Controller</h2>
+      <p class="help-text">Shortcuts: <kbd>S</kbd> start/pause timer, <kbd>R</kbd> reveal round, <kbd>N</kbd> next round.</p>
       <div class="button-grid">
         <button id="newLettersBtn">New Letters Round</button>
         <button id="newNumbersBtn">New Numbers Round</button>
@@ -82,6 +83,11 @@
       <div id="teamEntries" class="team-entries"></div>
       <div id="roundErrors" class="error-text" aria-live="polite"></div>
       <div id="revealPanel" class="reveal-panel"></div>
+    </section>
+
+    <section class="panel" aria-label="Round history">
+      <h2>Round History</h2>
+      <div id="roundHistory" class="round-history"></div>
     </section>
   </main>
 

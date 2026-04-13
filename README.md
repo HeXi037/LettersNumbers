@@ -15,6 +15,12 @@ Then visit `http://localhost:8000`.
 
 > The game is fully client-side (HTML/CSS/JS) and works offline.
 
+## Developer commands
+
+- `npm test` — run unit tests.
+- `npm run check:data` — validate dictionary/conundrum file integrity.
+- `npm run check` — run tests and data checks together.
+
 ## Rounds and scoring
 
 ### 1) Letters round
@@ -87,3 +93,13 @@ You can swap in larger files as long as they remain newline-separated plain text
 - replace `data/conundrums_small.txt` with more 9-letter answers
 
 No code changes are needed if the format stays the same.
+
+### Recommended dataset quality constraints
+
+For reliable gameplay and scoring:
+- use lowercase `a-z` words only (no spaces, punctuation, diacritics, or mixed case),
+- avoid duplicate dictionary entries,
+- keep conundrum answers exactly 9 letters,
+- keep one entry per line with no extra separators.
+
+Run `npm run check:data` before release to enforce these constraints.

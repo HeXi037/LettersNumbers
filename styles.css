@@ -116,6 +116,24 @@ button:focus-visible, input:focus-visible {
   margin: 0.5rem 0 0;
   color: #536080;
 }
+kbd {
+  background: #e9edf8;
+  border: 1px solid #c7d0e7;
+  border-radius: 4px;
+  padding: 0 0.35rem;
+  font-size: 0.85rem;
+}
+.round-history {
+  display: grid;
+  gap: 0.6rem;
+}
+.history-item {
+  border-left: 3px solid #8aa0da;
+  padding-left: 0.6rem;
+}
+.history-item p {
+  margin: 0.2rem 0;
+}
 .sr-only {
   position: absolute;
   left: -10000px;
