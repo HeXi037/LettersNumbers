@@ -18,8 +18,9 @@ Then visit `http://localhost:8000`.
 ## Rounds and scoring
 
 ### 1) Letters round
-- 9 letters are generated from weighted vowel/consonant bags.
-- Selection guarantees at least **3 vowels** and **4 consonants**.
+- The host performs **9 manual draws**, choosing **Vowel** or **Consonant** each time.
+- The letter set is built incrementally from the chosen class on each draw.
+- Any mix is valid, including edge cases like **9 vowels / 0 consonants** or **0 vowels / 9 consonants**.
 - Teams submit their best word before reveal.
 - A word is valid only if:
   - it uses only available letters (respecting multiplicity), and
@@ -27,6 +28,7 @@ Then visit `http://localhost:8000`.
 - Scoring:
   - 1 point per letter,
   - **9-letter word = 18 points** (double for a full nine).
+- **Each valid team submission scores independently** (both teams can score in the same letters round).
 - Reveal shows both submissions and the longest dictionary word possible from the letters.
 
 ### 2) Numbers round
@@ -55,7 +57,7 @@ Then visit `http://localhost:8000`.
 - One random 9-letter solution is picked from the conundrum list.
 - The UI shows a shuffled anagram.
 - Teams use BUZZ; buzzing locks out the other team for 3 seconds.
-- First correct answer scores 10 points.
+- The **first correct answer immediately wins the round**, awards 10 points to that team only, and locks further buzz/submissions.
 - Reveal shows the correct solution if nobody gets it.
 
 ## Settings

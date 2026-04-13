@@ -695,11 +695,7 @@ solutions
 fragments
 `.trim();
 
-const VOWELS = ['A', 'E', 'I', 'O', 'U'];
-const CONSONANTS = ['B', 'C', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X', 'Y', 'Z'];
-
-const DEFAULT_VOWEL_WEIGHTS = { A: 15, E: 21, I: 13, O: 13, U: 5 };
-const DEFAULT_CONSONANT_WEIGHTS = { B: 2, C: 3, D: 6, F: 2, G: 3, H: 2, J: 1, K: 1, L: 5, M: 4, N: 8, P: 4, Q: 1, R: 9, S: 9, T: 9, V: 1, W: 1, X: 1, Y: 1, Z: 1 };
+const { VOWELS, CONSONANTS, DEFAULT_VOWEL_WEIGHTS, DEFAULT_CONSONANT_WEIGHTS } = window.GameLogic;
 
 const elements = {
   teamAName: document.getElementById('teamAName'),
@@ -724,6 +720,7 @@ const elements = {
   timerAnnouncements: document.getElementById('timerAnnouncements'),
   roundTitle: document.getElementById('roundTitle'),
   roundPrompt: document.getElementById('roundPrompt'),
+  roundControls: document.getElementById('roundControls'),
   teamEntries: document.getElementById('teamEntries'),
   roundErrors: document.getElementById('roundErrors'),
   revealPanel: document.getElementById('revealPanel')
@@ -861,10 +858,11 @@ function zipWeights(letters, weights) {
 }
 
 function startLettersRound() {
-  const letters = generateLetters();
   state.round = {
     type: 'letters',
-    letters,
+    letters: [],
+    drawSequence: [],
+    drawComplete: false,
     submissions: freshSubmissions(),
     revealed: false,
     scored: false
@@ -894,6 +892,8 @@ function startConundrumRound() {
     anagram: shuffle(solution.toUpperCase().split('')).join(''),
     submissions: freshSubmissions(),
     buzz: { lockedUntil: 0, activeTeam: null },
+    solved: false,
+    winnerTeam: null,
     revealed: false,
     scored: false
   };
@@ -916,20 +916,6 @@ function freshSubmissions() {
   };
 }
 
-function generateLetters() {
-  const vowelWeights = { ...DEFAULT_VOWEL_WEIGHTS, ...state.settings.vowelWeights };
-  const consonantWeights = { ...DEFAULT_CONSONANT_WEIGHTS, ...state.settings.consonantWeights };
-
-  const letters = [];
-  for (let i = 0; i < 3; i += 1) letters.push(weightedPick(VOWELS, vowelWeights));
-  for (let i = 0; i < 4; i += 1) letters.push(weightedPick(CONSONANTS, consonantWeights));
-  for (let i = 0; i < 2; i += 1) {
-    const pickVowel = Math.random() < 0.4;
-    letters.push(weightedPick(pickVowel ? VOWELS : CONSONANTS, pickVowel ? vowelWeights : consonantWeights));
-  }
-  return shuffle(letters);
-}
-
 function generateNumbers(largeCount) {
   const largePool = [25, 50, 75, 100];
   const smallPool = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10];
@@ -941,16 +927,6 @@ function generateNumbers(largeCount) {
     small.push(bag.splice(Math.floor(Math.random() * bag.length), 1)[0]);
   }
   return shuffle([...large, ...small]);
-}
-
-function weightedPick(letters, map) {
-  const total = letters.reduce((sum, l) => sum + map[l], 0);
-  let roll = Math.random() * total;
-  for (const letter of letters) {
-    roll -= map[letter];
-    if (roll <= 0) return letter;
-  }
-  return letters[letters.length - 1];
 }
 
 function shuffle(arr) {
@@ -980,6 +956,7 @@ function renderRound() {
   const round = state.round;
   elements.teamEntries.innerHTML = '';
   elements.revealPanel.innerHTML = '';
+  elements.roundControls.innerHTML = '';
 
   if (!round) {
     elements.roundTitle.textContent = 'No active round';
@@ -989,7 +966,8 @@ function renderRound() {
 
   if (round.type === 'letters') {
     elements.roundTitle.textContent = 'Letters Round';
-    elements.roundPrompt.textContent = round.letters.join(' ');
+    elements.roundPrompt.textContent = round.letters.length ? round.letters.join(' ') : 'Choose vowel/consonant draws to build 9 letters.';
+    renderLettersDrawControls();
     renderTextSubmissions('letters', 'Enter word');
   }
 
@@ -1011,6 +989,7 @@ function renderRound() {
 }
 
 function renderTextSubmissions(type, placeholder) {
+  const lettersLocked = type === 'letters' && !state.round.drawComplete;
   ['A', 'B'].forEach((team) => {
     const row = document.createElement('div');
     row.className = 'entry-row';
@@ -1026,12 +1005,53 @@ function renderTextSubmissions(type, placeholder) {
 
     const submit = document.createElement('button');
     submit.textContent = 'Submit';
-    submit.disabled = state.round.revealed;
+    submit.disabled = state.round.revealed || lettersLocked;
     submit.addEventListener('click', () => submitTeamAnswer(team, type));
 
     row.append(input, submit);
     elements.teamEntries.appendChild(row);
   });
+}
+
+function renderLettersDrawControls() {
+  const remaining = 9 - state.round.letters.length;
+  const info = document.createElement('p');
+  info.className = 'help-text';
+  info.textContent = remaining > 0
+    ? `${remaining} draw${remaining === 1 ? '' : 's'} remaining. Pick vowel or consonant each time.`
+    : 'Draw complete. Teams may now submit words.';
+  elements.roundControls.appendChild(info);
+  const scoring = document.createElement('p');
+  scoring.className = 'help-text';
+  scoring.textContent = 'Letters scoring: each valid team word scores its own points.';
+  elements.roundControls.appendChild(scoring);
+
+  const controls = document.createElement('div');
+  controls.className = 'button-row';
+  const vowelBtn = document.createElement('button');
+  vowelBtn.textContent = 'Draw Vowel';
+  vowelBtn.disabled = state.round.revealed || remaining === 0;
+  vowelBtn.addEventListener('click', () => drawLetter('vowel'));
+  const consonantBtn = document.createElement('button');
+  consonantBtn.textContent = 'Draw Consonant';
+  consonantBtn.disabled = state.round.revealed || remaining === 0;
+  consonantBtn.addEventListener('click', () => drawLetter('consonant'));
+  controls.append(vowelBtn, consonantBtn);
+  elements.roundControls.appendChild(controls);
+}
+
+function drawLetter(drawType) {
+  if (!state.round || state.round.type !== 'letters' || state.round.revealed || state.round.letters.length >= 9) return;
+  const picked = window.GameLogic.generateLettersFromSequence(
+    [drawType],
+    state.settings.vowelWeights,
+    state.settings.consonantWeights
+  )[0];
+  state.round.drawSequence.push(drawType);
+  state.round.letters.push(picked);
+  state.round.drawComplete = state.round.letters.length === 9;
+  saveState();
+  renderRound();
 }
 
 function renderConundrumInputs() {
@@ -1043,12 +1063,12 @@ function renderConundrumInputs() {
     const buzzBtn = document.createElement('button');
     buzzBtn.textContent = `${state.teams[team].name} BUZZ`;
     const locked = Date.now() < (state.round.buzz.lockedUntil || 0);
-    buzzBtn.disabled = state.round.revealed || locked || state.round.buzz.activeTeam === team;
+    buzzBtn.disabled = state.round.revealed || state.round.solved || locked || state.round.buzz.activeTeam === team;
     buzzBtn.addEventListener('click', () => buzz(team));
 
     wrapper.appendChild(buzzBtn);
 
-    if (state.round.buzz.activeTeam === team && !state.round.revealed) {
+    if (state.round.buzz.activeTeam === team && !state.round.revealed && !state.round.solved) {
       const input = document.createElement('input');
       input.type = 'text';
       input.placeholder = 'Conundrum answer';
@@ -1121,17 +1141,17 @@ function evaluateNumbersSubmission(team) {
   submission.submitted = true;
 
   try {
-    const tokens = tokenize(expr);
+    const tokens = window.GameLogic.tokenize(expr);
     const numbersUsed = tokens.filter((t) => t.type === 'number').map((t) => t.value);
-    const usageCheck = validateNumberUsage(numbersUsed, state.round.numbers);
+    const usageCheck = window.GameLogic.validateNumberUsage(numbersUsed, state.round.numbers);
     if (!usageCheck.valid) {
       submission.valid = false;
       submission.meta = usageCheck.error;
       return;
     }
 
-    const rpn = toRpn(tokens);
-    const value = evalRpn(rpn);
+    const rpn = window.GameLogic.toRpn(tokens);
+    const value = window.GameLogic.evalRpn(rpn);
     submission.valid = true;
     submission.meta = `Value ${value}`;
     submission.result = value;
@@ -1141,111 +1161,27 @@ function evaluateNumbersSubmission(team) {
   }
 }
 
-function tokenize(expr) {
-  if (!expr) throw new Error('Enter an arithmetic expression.');
-  const tokens = [];
-  let i = 0;
-  while (i < expr.length) {
-    const ch = expr[i];
-    if (/\s/.test(ch)) { i += 1; continue; }
-    if (/\d/.test(ch)) {
-      let num = ch;
-      i += 1;
-      while (i < expr.length && /\d/.test(expr[i])) {
-        num += expr[i];
-        i += 1;
-      }
-      tokens.push({ type: 'number', value: Number(num) });
-      continue;
-    }
-    if ('+-*/()'.includes(ch)) {
-      tokens.push({ type: ch === '(' || ch === ')' ? 'paren' : 'op', value: ch });
-      i += 1;
-      continue;
-    }
-    throw new Error(`Unexpected character "${ch}".`);
-  }
-  return tokens;
-}
-
-function validateNumberUsage(numbersUsed, available) {
-  const counts = {};
-  available.forEach((n) => { counts[n] = (counts[n] || 0) + 1; });
-  for (const n of numbersUsed) {
-    if (!counts[n]) return { valid: false, error: `Invalid arithmetic – ${n} is not available or used too many times.` };
-    counts[n] -= 1;
-  }
-  return { valid: true };
-}
-
-function toRpn(tokens) {
-  const out = [];
-  const stack = [];
-  const prec = { '+': 1, '-': 1, '*': 2, '/': 2 };
-  for (const token of tokens) {
-    if (token.type === 'number') out.push(token);
-    else if (token.type === 'op') {
-      while (stack.length && stack[stack.length - 1].type === 'op' && prec[stack[stack.length - 1].value] >= prec[token.value]) {
-        out.push(stack.pop());
-      }
-      stack.push(token);
-    } else if (token.value === '(') {
-      stack.push(token);
-    } else if (token.value === ')') {
-      while (stack.length && stack[stack.length - 1].value !== '(') out.push(stack.pop());
-      if (!stack.length) throw new Error('Mismatched parentheses.');
-      stack.pop();
-    }
-  }
-  while (stack.length) {
-    const token = stack.pop();
-    if (token.value === '(') throw new Error('Mismatched parentheses.');
-    out.push(token);
-  }
-  return out;
-}
-
-function evalRpn(rpn) {
-  const stack = [];
-  for (const token of rpn) {
-    if (token.type === 'number') {
-      stack.push(token.value);
-      continue;
-    }
-    const b = stack.pop();
-    const a = stack.pop();
-    if (a === undefined || b === undefined) throw new Error('Malformed expression.');
-    let result;
-    if (token.value === '+') result = a + b;
-    if (token.value === '-') result = a - b;
-    if (token.value === '*') result = a * b;
-    if (token.value === '/') {
-      if (b === 0 || a % b !== 0) throw new Error('Division must result in an integer at each step.');
-      result = a / b;
-    }
-    stack.push(result);
-  }
-  if (stack.length !== 1 || !Number.isInteger(stack[0])) throw new Error('Malformed expression.');
-  return stack[0];
-}
-
 function evaluateConundrumSubmission(team) {
+  if (state.round.solved) return;
   const sub = state.round.submissions[team];
   const val = sub.value.trim().toLowerCase();
   sub.submitted = true;
-  if (val === state.round.solution) {
+  const verdict = window.GameLogic.applyConundrumAnswer(state.round, team, val);
+  if (verdict.correct) {
     sub.valid = true;
-    sub.meta = 'Correct!';
+    sub.meta = 'Correct! First in.';
     sub.score = 10;
+    state.teams[team].score += 10;
+    state.round.scored = true;
   } else {
     sub.valid = false;
-    sub.meta = 'Incorrect conundrum answer.';
+    sub.meta = verdict.alreadySolved ? 'Round already solved.' : 'Incorrect conundrum answer.';
   }
   state.round.buzz.activeTeam = null;
 }
 
 function buzz(team) {
-  if (!state.round || state.round.type !== 'conundrum') return;
+  if (!state.round || state.round.type !== 'conundrum' || state.round.solved) return;
   state.round.buzz.activeTeam = team;
   state.round.buzz.lockedUntil = Date.now() + 3000;
   saveState();
@@ -1267,18 +1203,9 @@ function revealRound() {
 
 function scoreLettersRound() {
   if (state.round.scored) return;
-  const a = state.round.submissions.A;
-  const b = state.round.submissions.B;
-
-  const aLen = a.valid ? (a.value.trim().length) : 0;
-  const bLen = b.valid ? (b.value.trim().length) : 0;
-
-  if (aLen > bLen) state.teams.A.score += a.score;
-  if (bLen > aLen) state.teams.B.score += b.score;
-  if (aLen > 0 && aLen === bLen) {
-    state.teams.A.score += a.score;
-    state.teams.B.score += b.score;
-  }
+  const awards = window.GameLogic.scoreLettersSubmissions(state.round.submissions);
+  state.teams.A.score += awards.A;
+  state.teams.B.score += awards.B;
 
   state.round.longest = findLongestWordFromLetters(state.round.letters);
   state.round.scored = true;
@@ -1365,9 +1292,7 @@ function solveNumbers(numbers, target) {
 
 function scoreConundrumRound() {
   if (state.round.scored) return;
-  for (const team of ['A', 'B']) {
-    if (state.round.submissions[team].valid) state.teams[team].score += 10;
-  }
+  if (state.round.winnerTeam) state.teams[state.round.winnerTeam].score += 10;
   state.round.scored = true;
 }
 
@@ -1394,10 +1319,12 @@ function renderReveal() {
   }
 
   if (round.type === 'conundrum') {
+    const winner = round.winnerTeam ? state.teams[round.winnerTeam].name : null;
     elements.revealPanel.innerHTML = `
       <h3>Reveal</h3>
       <p>${state.teams.A.name}: ${round.submissions.A.meta || 'No answer'}</p>
       <p>${state.teams.B.name}: ${round.submissions.B.meta || 'No answer'}</p>
+      <p><strong>Winner:</strong> ${winner || 'No correct answer'}</p>
       <p><strong>Correct word:</strong> ${round.solution}</p>
     `;
   }

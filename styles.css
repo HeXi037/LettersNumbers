@@ -89,6 +89,9 @@ button:focus-visible, input:focus-visible {
   font-weight: bold;
   margin-bottom: 1rem;
 }
+.round-controls {
+  margin-bottom: 0.8rem;
+}
 .team-entries {
   display: grid;
   gap: 0.8rem;
