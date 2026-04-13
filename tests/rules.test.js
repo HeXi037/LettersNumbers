@@ -61,3 +61,21 @@ test('numbers parser enforces reuse limits and integer-only division', () => {
   assert.equal(validateNumberUsage([50, 50], [50, 10, 7, 3, 2, 1]).valid, false);
   assert.throws(() => evalRpn(toRpn(tokenize('10/3'))), /Division must result in an integer/);
 });
+
+
+test('numbers parser rejects invalid characters and mismatched parentheses', () => {
+  assert.throws(() => tokenize('5+foo'), /Unexpected character/);
+  assert.throws(() => toRpn(tokenize('(10+2')), /Mismatched parentheses/);
+  assert.throws(() => toRpn(tokenize('10+2)')), /Mismatched parentheses/);
+});
+
+test('conundrum answer matching is case-insensitive and trims whitespace', () => {
+  const round = { solution: 'asteroids', solved: false, winnerTeam: null };
+
+  const result = applyConundrumAnswer(round, 'B', '  ASTEROIDS  ');
+
+  assert.equal(result.accepted, true);
+  assert.equal(result.correct, true);
+  assert.equal(round.solved, true);
+  assert.equal(round.winnerTeam, 'B');
+});
