@@ -682,7 +682,7 @@ zealous
 `.trim();
 
 const DEFAULT_CONUNDRUMS = `
-triangle
+triangles
 reactions
 learnings
 integrals
@@ -723,7 +723,8 @@ const elements = {
   roundControls: document.getElementById('roundControls'),
   teamEntries: document.getElementById('teamEntries'),
   roundErrors: document.getElementById('roundErrors'),
-  revealPanel: document.getElementById('revealPanel')
+  revealPanel: document.getElementById('revealPanel'),
+  roundHistory: document.getElementById('roundHistory')
 };
 
 let dictionary = new Set(DEFAULT_WORDS.split('\n').map((w) => w.trim().toLowerCase()).filter(Boolean));
@@ -733,7 +734,8 @@ const state = loadState() || {
   teams: { A: { name: 'Team A', score: 0 }, B: { name: 'Team B', score: 0 } },
   settings: { ...DEFAULT_SETTINGS },
   round: null,
-  timer: { remaining: 30, running: false, endTime: null }
+  timer: { remaining: 30, running: false, endTime: null },
+  history: []
 };
 
 let timerInterval = null;
@@ -755,6 +757,7 @@ function normalizeState() {
   state.settings.largeCount = clampNumber(state.settings.largeCount, 0, 4, 2);
   if (!state.timer) state.timer = { remaining: state.settings.timerDuration, running: false, endTime: null };
   if (!Number.isFinite(state.timer.remaining)) state.timer.remaining = state.settings.timerDuration;
+  if (!Array.isArray(state.history)) state.history = [];
 }
 
 async function loadDataFiles() {
@@ -795,6 +798,7 @@ function bindEvents() {
   elements.timerStartBtn.addEventListener('click', startTimer);
   elements.timerPauseBtn.addEventListener('click', pauseTimer);
   elements.timerResetBtn.addEventListener('click', resetTimer);
+  document.addEventListener('keydown', handleHostShortcuts);
 }
 
 function hydrateSettings() {
@@ -885,7 +889,7 @@ function startNumbersRound() {
 }
 
 function startConundrumRound() {
-  const solution = conundrums[Math.floor(Math.random() * conundrums.length)] || 'triangle';
+  const solution = conundrums[Math.floor(Math.random() * conundrums.length)] || 'triangles';
   state.round = {
     type: 'conundrum',
     solution,
@@ -941,6 +945,27 @@ function render() {
   renderScoreboard();
   renderTimer();
   renderRound();
+  renderRoundHistory();
+}
+
+function renderRoundHistory() {
+  if (!elements.roundHistory) return;
+  if (!state.history.length) {
+    elements.roundHistory.innerHTML = '<p class="help-text">No rounds completed yet.</p>';
+    return;
+  }
+
+  elements.roundHistory.innerHTML = '';
+  state.history.forEach((entry) => {
+    const block = document.createElement('article');
+    block.className = 'history-item';
+    block.innerHTML = `
+      <p><strong>Round ${entry.roundNumber}: ${entry.type}</strong></p>
+      <p>${state.teams.A.name}: +${entry.awards.A} | ${state.teams.B.name}: +${entry.awards.B}</p>
+      <p>${entry.summary}</p>
+    `;
+    elements.roundHistory.appendChild(block);
+  });
 }
 
 function renderScoreboard() {
@@ -1196,9 +1221,48 @@ function revealRound() {
   if (state.round.type === 'letters') scoreLettersRound();
   if (state.round.type === 'numbers') scoreNumbersRound();
   if (state.round.type === 'conundrum') scoreConundrumRound();
+  pushRoundHistoryEntry();
 
   saveState();
   renderRound();
+}
+
+function pushRoundHistoryEntry() {
+  const round = state.round;
+  if (!round) return;
+  const entry = {
+    roundNumber: state.history.length + 1,
+    type: round.type[0].toUpperCase() + round.type.slice(1),
+    awards: { A: 0, B: 0 },
+    summary: ''
+  };
+
+  if (round.type === 'letters') {
+    entry.awards = window.GameLogic.scoreLettersSubmissions(round.submissions);
+    entry.summary = `Letters: ${round.letters.join(' ')} | Longest: ${round.longest}`;
+  }
+  if (round.type === 'numbers') {
+    const target = round.target;
+    const aDelta = round.submissions.A.valid ? Math.abs(target - round.submissions.A.result) : Infinity;
+    const bDelta = round.submissions.B.valid ? Math.abs(target - round.submissions.B.result) : Infinity;
+    let aPoints = 0;
+    let bPoints = 0;
+    if (aDelta < bDelta) aPoints = pointsForDelta(aDelta);
+    if (bDelta < aDelta) bPoints = pointsForDelta(bDelta);
+    if (aDelta !== Infinity && aDelta === bDelta) {
+      aPoints = pointsForDelta(aDelta);
+      bPoints = pointsForDelta(bDelta);
+    }
+    entry.awards = { A: aPoints, B: bPoints };
+    entry.summary = `Numbers: target ${target}, official ${round.official.value} via ${round.official.expr}`;
+  }
+  if (round.type === 'conundrum') {
+    const winner = round.winnerTeam || 'none';
+    entry.awards = { A: round.winnerTeam === 'A' ? 10 : 0, B: round.winnerTeam === 'B' ? 10 : 0 };
+    entry.summary = `Conundrum: ${round.anagram} → ${round.solution} (winner: ${winner})`;
+  }
+
+  state.history = [entry, ...state.history].slice(0, 20);
 }
 
 function scoreLettersRound() {
@@ -1354,8 +1418,21 @@ function nextRound() {
 function resetMatch() {
   state.teams.A.score = 0;
   state.teams.B.score = 0;
+  state.history = [];
   nextRound();
   saveState();
+}
+
+function handleHostShortcuts(event) {
+  if (event.defaultPrevented) return;
+  const tag = event.target?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (event.key.toLowerCase() === 's') {
+    if (state.timer.running) pauseTimer();
+    else startTimer();
+  }
+  if (event.key.toLowerCase() === 'r') revealRound();
+  if (event.key.toLowerCase() === 'n') nextRound();
 }
 
 function startTimer() {

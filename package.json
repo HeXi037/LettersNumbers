@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "description": "Self-contained Countdown-style browser game",
   "scripts": {
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "check:data": "node scripts/check-data.js",
+    "check": "npm test && npm run check:data"
   }
 }

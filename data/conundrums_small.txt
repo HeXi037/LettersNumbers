@@ -1,4 +1,4 @@
-triangle
+triangles
 reactions
 learnings
 integrals
