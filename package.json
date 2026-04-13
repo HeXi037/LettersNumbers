@@ -1,0 +1,9 @@
+{
+  "name": "countdown-party-game",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Self-contained Countdown-style browser game",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}
