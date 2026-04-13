@@ -4,7 +4,7 @@ A self-contained browser game inspired by **Countdown** / **8 Out of 10 Cats Doe
 
 ## Run the app
 
-- **Option 1:** Open `index.html` directly in your browser.
+- **Option 1:** Open `index.html` directly in your browser (works for quick play, but browsers may block `fetch('data/...')` on `file://`, so the app can fall back to embedded default word/conundrum lists).
 - **Option 2:** Serve statically and open in browser:
 
 ```bash
@@ -13,7 +13,7 @@ python -m http.server
 
 Then visit `http://localhost:8000`.
 
-> The game is fully client-side (HTML/CSS/JS) and works offline.
+> The game is fully client-side (HTML/CSS/JS) and works offline. For reliable loading of external `data/*.txt` files, use Option 2 (local HTTP server).
 
 ## Developer commands
 
@@ -88,7 +88,7 @@ Current match state is stored in `localStorage`, including:
 
 ### Replacing with larger lists
 
-You can swap in larger files as long as they remain newline-separated plain text:
+You can swap in larger files as long as they remain newline-separated plain text (serve the app over HTTP so `data/*.txt` can be fetched reliably):
 - replace `data/words_small.txt` with a larger dictionary
 - replace `data/conundrums_small.txt` with more 9-letter answers
 
