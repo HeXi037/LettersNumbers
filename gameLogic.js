@@ -134,6 +134,84 @@
     return stack[0];
   }
 
+  function canonicalLetters(value) {
+    return value.toLowerCase().split('').sort().join('');
+  }
+
+  function createWordSolver(words = []) {
+    const wordsBySignature = new Map();
+    for (const rawWord of words) {
+      const word = String(rawWord || '').trim().toLowerCase();
+      if (!/^[a-z]+$/.test(word) || word.length > 9) continue;
+      const key = canonicalLetters(word);
+      const bucket = wordsBySignature.get(key);
+      if (bucket) bucket.push(word);
+      else wordsBySignature.set(key, [word]);
+    }
+
+    wordsBySignature.forEach((bucket) => bucket.sort());
+
+    function buildKeyOptions(letters) {
+      const counts = {};
+      letters.forEach((letter) => {
+        const ch = String(letter).toLowerCase();
+        if (/^[a-z]$/.test(ch)) counts[ch] = (counts[ch] || 0) + 1;
+      });
+      const ordered = Object.keys(counts).sort();
+      const groupedKeys = new Map();
+
+      function walk(index, acc) {
+        if (index === ordered.length) {
+          if (!acc.length) return;
+          const key = acc.join('');
+          const list = groupedKeys.get(key.length);
+          if (list) list.push(key);
+          else groupedKeys.set(key.length, [key]);
+          return;
+        }
+
+        const ch = ordered[index];
+        walk(index + 1, acc);
+        for (let i = 1; i <= counts[ch]; i += 1) {
+          acc.push(ch);
+          walk(index + 1, acc);
+        }
+        acc.length -= counts[ch];
+      }
+
+      walk(0, []);
+      return groupedKeys;
+    }
+
+    function findWordsFromLetters(letters, limit = 50) {
+      const keyOptions = buildKeyOptions(letters);
+      let best = '';
+      const matches = [];
+
+      for (let len = 9; len >= 1; len -= 1) {
+        const keys = keyOptions.get(len);
+        if (!keys) continue;
+        for (const key of keys) {
+          const bucket = wordsBySignature.get(key);
+          if (!bucket) continue;
+          if (!best) best = bucket[0];
+          matches.push(...bucket);
+        }
+        if (best) break;
+      }
+
+      matches.sort();
+      return {
+        bestWord: best || 'No match found',
+        words: matches.slice(0, limit)
+      };
+    }
+
+    return {
+      findWordsFromLetters
+    };
+  }
+
   const api = {
     VOWELS,
     CONSONANTS,
@@ -146,7 +224,8 @@
     tokenize,
     validateNumberUsage,
     toRpn,
-    evalRpn
+    evalRpn,
+    createWordSolver
   };
 
   globalScope.GameLogic = api;

@@ -728,6 +728,7 @@ const elements = {
 };
 
 let dictionary = new Set(DEFAULT_WORDS.split('\n').map((w) => w.trim().toLowerCase()).filter(Boolean));
+let wordSolver = window.GameLogic.createWordSolver(Array.from(dictionary));
 let conundrums = DEFAULT_CONUNDRUMS.split('\n').map((w) => w.trim().toLowerCase()).filter((w) => w.length === 9);
 
 const state = loadState() || {
@@ -774,6 +775,7 @@ async function loadDataFiles() {
   const wordsText = await loadText('data/words_small.txt');
   if (wordsText) {
     dictionary = new Set(wordsText.split('\n').map((w) => w.trim().toLowerCase()).filter(Boolean));
+    wordSolver = window.GameLogic.createWordSolver(Array.from(dictionary));
   }
 
   const conundrumsText = await loadText('data/conundrums_small.txt');
@@ -1271,18 +1273,14 @@ function scoreLettersRound() {
   state.teams.A.score += awards.A;
   state.teams.B.score += awards.B;
 
-  state.round.longest = findLongestWordFromLetters(state.round.letters);
+  const best = findLongestWordFromLetters(state.round.letters);
+  state.round.longest = best.bestWord;
+  state.round.possible = best.words;
   state.round.scored = true;
 }
 
 function findLongestWordFromLetters(letters) {
-  let best = '';
-  for (const word of dictionary) {
-    if (word.length < best.length) continue;
-    const check = validateWordUsesLetters(word, letters);
-    if (check.valid && word.length >= best.length) best = word;
-  }
-  return best || 'No match found';
+  return wordSolver.findWordsFromLetters(letters);
 }
 
 function scoreNumbersRound() {
@@ -1363,11 +1361,13 @@ function scoreConundrumRound() {
 function renderReveal() {
   const round = state.round;
   if (round.type === 'letters') {
+    const possibleWords = round.possible?.length ? round.possible.join(', ') : 'No words found';
     elements.revealPanel.innerHTML = `
       <h3>Reveal</h3>
       <p>${state.teams.A.name}: ${formatLetterResult(round.submissions.A)}</p>
       <p>${state.teams.B.name}: ${formatLetterResult(round.submissions.B)}</p>
       <p><strong>Longest possible word:</strong> ${round.longest}</p>
+      <p><strong>Possible longest words:</strong> ${possibleWords}</p>
     `;
   }
 

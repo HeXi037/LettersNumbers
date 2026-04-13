@@ -9,7 +9,8 @@ const {
   tokenize,
   validateNumberUsage,
   toRpn,
-  evalRpn
+  evalRpn,
+  createWordSolver
 } = require('../gameLogic.js');
 
 test('letters draw supports arbitrary vowel/consonant sequences including 9/0 splits', () => {
@@ -78,4 +79,24 @@ test('conundrum answer matching is case-insensitive and trims whitespace', () =>
   assert.equal(result.correct, true);
   assert.equal(round.solved, true);
   assert.equal(round.winnerTeam, 'B');
+});
+
+test('word solver finds longest possible words from 9 letters without scanning full dictionary every round', () => {
+  const solver = createWordSolver([
+    'triangle',
+    'integral',
+    'altering',
+    'alerting',
+    'art',
+    'rat',
+    'tar',
+    'zzz'
+  ]);
+
+  const result = solver.findWordsFromLetters(['T', 'R', 'I', 'A', 'N', 'G', 'L', 'E', 'S'], 10);
+
+  assert.equal(result.bestWord.length, 8);
+  assert.ok(result.words.includes('triangle'));
+  assert.ok(result.words.includes('integral'));
+  assert.equal(result.words.includes('zzz'), false);
 });
